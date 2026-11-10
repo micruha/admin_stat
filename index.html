@@ -27,7 +27,6 @@
         }
     </style>
 </head>
-
 <body>
     <div style="max-width:1200px; margin:0 auto;">
         <div style="display:flex; justify-content:space-between; align-items:center; background:#1f1f1f; padding:20px; border-radius:8px; border:1px solid #333; margin-bottom:20px; flex-wrap:wrap; gap:15px;">
@@ -38,7 +37,6 @@
                     <span id="admin-status-text">Проверка связи...</span>
                 </div>
             </div>
-            
             <div style="display:flex; align-items:center; gap:15px;">
                 <select id="filter-month" style="background:#2d2d2d; color:#fff; border:1px solid #333; padding:10px 15px; border-radius:6px; font-size:14px; outline:none; cursor:pointer;">
                     <option>Загрузка месяцев...</option>
@@ -77,10 +75,8 @@
         </div>
     </div>
     <script>
-        
     (async function() {
         const PASSWORD_HASH = "d9773bc180a39dd0334a4c1dfd01d59e1603e74b9b88ccd79149ffec702a396d";
-        
         if (sessionStorage.getItem("admin_passed") !== "true") {
             let passInput = prompt("Вход заблокирован. Введите секретный пароль администратора:");
             if (!passInput) return fail();
@@ -101,7 +97,6 @@
             throw new Error("Блокировка доступа.");
         }
     })();
-
     document.addEventListener('contextmenu', e => e.preventDefault());
     document.addEventListener('keydown', e => {
         if (e.key === 'F12' || 
@@ -110,10 +105,8 @@
             e.preventDefault();
             return false;
         }
-    });
-      
+    }); 
     const CONFIG_CLOUD_URL = "https://script.google.com/macros/s/AKfycbyktok79zqXQXI3_3fNIoHPNtCG5u3gPaMGZGVWYOQHivdr5lMr3YZOvRa2_cxyL7SH/exec";
-
     let rawSalaries = [];
     let activeEmpFilter = null;
     function setAdminStatus(isOnline, text = "") {
@@ -146,7 +139,6 @@
             console.error(e);
         }
     }
-
 function buildMonthFilter() {
     const filterSelect = document.getElementById("filter-month");
     if (!filterSelect) return;
@@ -154,18 +146,15 @@ function buildMonthFilter() {
     filterSelect.innerHTML = "";
     let monthsSet = new Set();
     rawSalaries.forEach(row => {
-        
         if (!row.date) return;
-        // Превращаем любое значение из таблицы в правильный объект даты JavaScript
         let parsedDate = new Date(row.date);
-        // Если дата распознана корректно, берем из нее данные
         if (!isNaN(parsedDate.getTime())) {
             let year = parsedDate.getFullYear();
-            let month = parsedDate.getMonth(); // Месяц от 0 до 11
+            let month = parsedDate.getMonth();
             let mNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
             monthsSet.add(mNames[month] + " " + year);
-
-    }});
+        }
+    });
     let sortedMonths = Array.from(monthsSet).sort((a, b) => {
         let pA = a.split(" "), pB = b.split(" ");
         let mNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
@@ -191,7 +180,6 @@ function buildMonthFilter() {
         renderAdminDashboard();
     };
 }
-
 function renderAdminDashboard() {
     const filterSelect = document.getElementById("filter-month");
     const cardsContainer = document.getElementById("admin-cards-grid");
@@ -203,22 +191,15 @@ function renderAdminDashboard() {
     let totalMonthPayout = 0;
     rawSalaries.forEach(row => {
         if (!row.date || !row.name) return;
-        
-        // Превращаем значение в правильный объект даты
         let parsedDate = new Date(row.date);
-        
         if (!isNaN(parsedDate.getTime())) {
             let year = parsedDate.getFullYear();
             let month = parsedDate.getMonth();
-            
             let mNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
             let rowMonth = mNames[month] + " " + year;
-            
-            // Если месяц строки совпадает с выбранным в фильтре месяцем
             if (rowMonth === selMonth) {
                 let totalVal = Number(row.total) || 0;
                 totalMonthPayout += totalVal;
-                
                 if (!empTotals[row.name]) {
                     empTotals[row.name] = { total: 0, shifts: 0 };
                 }
@@ -227,8 +208,7 @@ function renderAdminDashboard() {
             }
         }
     });
-
-    totalPayoutDisplay.textContent = totalMonthPayout.toLocaleString() + " ₸";
+    totalPayoutDisplay.textContent = totalMonthPayout.toLocaleString() + " тг.";
     let empNames = Object.keys(empTotals);
     if (empNames.length === 0) {
         cardsContainer.innerHTML = "<div style='color:#aaa; grid-column:1/-1; text-align:center; padding:20px;'>Выплат не найдено</div>";
@@ -251,26 +231,19 @@ function renderAdminDashboard() {
     });
     renderEmployeeDetails(selMonth);
 }
-
-// ШАГ 4: ПОДРОБНАЯ ТАБЛИЦА-РАСШИФРОВКА ПО ДНЯМ ДЛЯ МАСТЕРА
 function renderEmployeeDetails(selMonth) {
     const detailsSection = document.getElementById("admin-details-section");
     const detailsTitle = document.getElementById("details-emp-name");
     const detailsTableBody = document.getElementById("details-table-body");
-    
     if (!detailsSection || !detailsTitle || !detailsTableBody) return;
     if (!activeEmpFilter) {
         detailsSection.style.display = "none";
         return;
     }
-    
     detailsTitle.textContent = activeEmpFilter;
     detailsTableBody.innerHTML = "";
-    
-    // Отбираем строчки из базы строго для этого сотрудника и за этот месяц
     let filteredRows = rawSalaries.filter(row => {
         if (!row.date || row.name !== activeEmpFilter) return false;
-        
         let parsedDate = new Date(row.date);
         if (!isNaN(parsedDate.getTime())) {
             let year = parsedDate.getFullYear();
@@ -281,33 +254,23 @@ function renderEmployeeDetails(selMonth) {
         }
         return false;
     });
-    
-    // Сортируем по датам от ранних к поздним
     filteredRows.sort((a, b) => new Date(a.date) - new Date(b.date));
-    
-    // Заполняем таблицу с безопасным выводом даты
     filteredRows.forEach(row => {
         let tr = document.createElement("tr");
-        
         let parsedDate = new Date(row.date);
         let displayDate = !isNaN(parsedDate.getTime()) 
             ? parsedDate.toLocaleDateString("ru-RU") 
             : row.date.toString().split("T")[0];
-            
         tr.innerHTML = "<td style='padding:10px; border-bottom:1px solid #333;'>" + displayDate + "</td>" +
                        "<td style='padding:10px; border-bottom:1px solid #333;'>" + (row.point || "—") + "</td>" +
                        "<td style='padding:10px; border-bottom:1px solid #333;'><span style='background:#2d2d2d; padding:3px 8px; border-radius:4px; font-size:12px;'>" + row.mode + "</span></td>" +
-                       "<td style='padding:10px; border-bottom:1px solid #333;'>" + Number(row.base).toLocaleString() + " ₸</td>" +
-                       "<td style='padding:10px; border-bottom:1px solid #333;'>" + Number(row.bonus).toLocaleString() + " ₸</td>" +
-                       "<td style='padding:10px; border-bottom:1px solid #333; color:#4caf50; font-weight:bold;'>" + Number(row.total).toLocaleString() + " ₸</td>";
-                       
+                       "<td style='padding:10px; border-bottom:1px solid #333;'>" + Number(row.base).toLocaleString() + " тг.</td>" +
+                       "<td style='padding:10px; border-bottom:1px solid #333;'>" + Number(row.bonus).toLocaleString() + " тг.</td>" +
+                       "<td style='padding:10px; border-bottom:1px solid #333; color:#4caf50; font-weight:bold;'>" + Number(row.total).toLocaleString() + " тг.</td>";
         detailsTableBody.appendChild(tr);
     });
-    
     detailsSection.style.display = "block";
 }
-
-// ИНИЦИАЛИЗАЦИЯ СТРАНИЦЫ ПРИ ЗАГРУЗКЕ
 document.addEventListener("DOMContentLoaded", () => {
     const btnRefresh = document.getElementById("admin-btn-refresh");
     if (btnRefresh) {
