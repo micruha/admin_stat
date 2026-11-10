@@ -164,7 +164,6 @@ function buildMonthFilter() {
             let month = parsedDate.getMonth(); // Месяц от 0 до 11
             let mNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
             monthsSet.add(mNames[month] + " " + year);
-        }
 
     });
     let sortedMonths = Array.from(monthsSet).sort((a, b) => {
