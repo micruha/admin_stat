@@ -80,7 +80,6 @@
                             <th style="padding:10px;">Ставка</th>
                             <th style="padding:10px;">Бонус (%)</th>
                             <th style="padding:10px;">Выдано</th>
-                            <th style="padding:10px;">Касса остаток</th>
                         </tr>
                     </thead>
                     <tbody id="details-table-body">
@@ -312,9 +311,9 @@ function renderEmployeeDetails(selMonth) {
         let tr = document.createElement("tr");
         
         // Красиво форматируем дату для вывода в таблицу (убираем Т00:00:00 из ISO)
-        let displayDate = row.date.toString().split("T")[0];
+        let displayDate = row.date.toString().split(" ")[0].split("T")[0];
         
-        tr.innerHTML = "<td style='padding:10px; border-bottom:1px solid #333;'>" + displayDate + "</td><td style='padding:10px; border-bottom:1px solid #333;'>" + (row.point || "—") + "</td><td style='padding:10px; border-bottom:1px solid #333;'><span style='background:#2d2d2d; padding:3px 8px; border-radius:4px; font-size:12px;'> " + row.mode + "</span></td><td style='padding:10px; border-bottom:1px solid #333;'>" + Number(row.base).toLocaleString() + " ₸</td><td style='padding:10px; border-bottom:1px solid #333;'>" + Number(row.bonus).toLocaleString() + " ₸</td><td style='padding:10px; border-bottom:1px solid #333; color:#4caf50; font-weight:bold;'>" + Number(row.total).toLocaleString() + " ₸</td><td style='padding:10px; border-bottom:1px solid #333; color:#aaa;'>" + Number(row.drawerLeft).toLocaleString() + " ₸</td>";
+        tr.innerHTML = "<td style='padding:10px; border-bottom:1px solid #333;'>" + displayDate + "</td><td style='padding:10px; border-bottom:1px solid #333;'>" + (row.point || "—") + "</td><td style='padding:10px; border-bottom:1px solid #333;'><span style='background:#2d2d2d; padding:3px 8px; border-radius:4px; font-size:12px;'> " + row.mode + "</span></td><td style='padding:10px; border-bottom:1px solid #333;'>" + Number(row.base).toLocaleString() + " ₸</td><td style='padding:10px; border-bottom:1px solid #333;'>" + Number(row.bonus).toLocaleString() + " ₸</td><td style='padding:10px; border-bottom:1px solid #333; color:#4caf50; font-weight:bold;'>" + Number(row.total).toLocaleString() + " тг.</td>";
         detailsTableBody.appendChild(tr);
     });
     
