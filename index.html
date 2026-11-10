@@ -202,10 +202,9 @@ function renderAdminDashboard() {
     let empTotals = {};
     let totalMonthPayout = 0;
     rawSalaries.forEach(row => {
-        
-    rawSalaries.forEach(row => {
         if (!row.date || !row.name) return;
         
+        // Превращаем значение в правильный объект даты
         let parsedDate = new Date(row.date);
         
         if (!isNaN(parsedDate.getTime())) {
@@ -215,6 +214,7 @@ function renderAdminDashboard() {
             let mNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
             let rowMonth = mNames[month] + " " + year;
             
+            // Если месяц строки совпадает с выбранным в фильтре месяцем
             if (rowMonth === selMonth) {
                 let totalVal = Number(row.total) || 0;
                 totalMonthPayout += totalVal;
@@ -228,7 +228,6 @@ function renderAdminDashboard() {
         }
     });
 
-    
     totalPayoutDisplay.textContent = totalMonthPayout.toLocaleString() + " ₸";
     let empNames = Object.keys(empTotals);
     if (empNames.length === 0) {
