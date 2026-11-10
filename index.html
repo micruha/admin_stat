@@ -310,8 +310,12 @@ function renderEmployeeDetails(selMonth) {
     filteredRows.forEach(row => {
         let tr = document.createElement("tr");
         
-        // Красиво форматируем дату для вывода в таблицу (убираем Т00:00:00 из ISO)
-        let displayDate = row.date.toString().split(" ")[0].split("T")[0];
+        // Железное форматирование в стандартный формат ДД.ММ.ГГГГ
+        let parsedDate = new Date(row.date);
+        let displayDate = isNaN(parsedDate.getTime()) 
+            ? row.date.toString().split("T")[0] 
+            : parsedDate.toLocaleDateString("ru-RU");
+
         
         tr.innerHTML = "<td style='padding:10px; border-bottom:1px solid #333;'>" + displayDate + "</td><td style='padding:10px; border-bottom:1px solid #333;'>" + (row.point || "—") + "</td><td style='padding:10px; border-bottom:1px solid #333;'><span style='background:#2d2d2d; padding:3px 8px; border-radius:4px; font-size:12px;'> " + row.mode + "</span></td><td style='padding:10px; border-bottom:1px solid #333;'>" + Number(row.base).toLocaleString() + " ₸</td><td style='padding:10px; border-bottom:1px solid #333;'>" + Number(row.bonus).toLocaleString() + " ₸</td><td style='padding:10px; border-bottom:1px solid #333; color:#4caf50; font-weight:bold;'>" + Number(row.total).toLocaleString() + " тг.</td>";
         detailsTableBody.appendChild(tr);
