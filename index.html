@@ -148,12 +148,20 @@
         
         rawSalaries.forEach(row => {
             if (!row.date) return;
-            let parts = row.date.split(".");
-            if (parts.length === 3) {
-                let mIdx = parseInt(parts[1], 10) - 1;
-                let y = parts[2];
-                let mNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
-                monthsSet.add(mNames[mIdx] + " " + y);
+        let day, month, year;
+        let dateStr = row.date.toString().trim();
+        
+        if (dateStr.includes("-")) {
+            let p = dateStr.split("T")[0].split("-");
+            year = p[0]; month = parseInt(p[1], 10) - 1;
+        } else {
+            let p = dateStr.split(".");
+            year = p[2] ? p[2].split(" ")[0] : new Date().getFullYear();
+            month = p[1] ? parseInt(p[1], 10) - 1 : 0;
+        }
+        
+        let mNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+        monthsSet.add(mNames[month] + " " + year);
             }
         });
         
@@ -269,20 +277,27 @@
         
         let filteredRows = rawSalaries.filter(row => {
             if (!row.date || row.name !== activeEmpFilter) return false;
-            let parts = row.date.split(".");
-            if (parts.length === 3) {
-                let mIdx = parseInt(parts[1], 10) - 1;
-                // Срезаем лишние пробелы или время, если они прилипли к году
-                let y = parts[2].trim().split(" ")[0]; 
-                let mNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
-                return (mNames[mIdx] + " " + y) === selMonth;
+        let day, month, year;
+        let dateStr = row.date.toString().trim();
+        
+        if (dateStr.includes("-")) {
+            let p = dateStr.split("T")[0].split("-");
+            year = p[0]; month = parseInt(p[1], 10) - 1;
+        } else {
+            let p = dateStr.split(".");
+            year = p[2] ? p[2].trim().split(" ")[0] : new Date().getFullYear();
+            month = p[1] ? parseInt(p[1], 10) - 1 : 0;
+        }
+        
+        let mNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+        return (mNames[month] + " " + year) === selMonth;
             }
             return false;
         });
         
         filteredRows.sort((a, b) => {
-            let pA = a.date.split("."), pB = b.date.split(".");
-            return new Date(pA[2], pA[1]-1, pA[0]) - new Date(pB[2], pB[1]-1, pB[0]);
+            return new Date(a.date) - new Date(b.date);
+
         });
         
         filteredRows.forEach(row => {
