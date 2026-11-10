@@ -137,23 +137,24 @@
 
 
 
-    // ШАГ 2: СБОРКА УНИКАЛЬНЫХ МЕСЯЦЕВ ДЛЯ ФИЛЬТРА
-    function buildMonthFilter() {
-        const filterSelect = document.getElementById("filter-month");
-        if (!filterSelect) return;
-        
-        const oldVal = filterSelect.value;
-        filterSelect.innerHTML = "";
-        let monthsSet = new Set();
-        
-        rawSalaries.forEach(row => {
-            if (!row.date) return;
+// ШАГ 2: СБОРКА УНИКАЛЬНЫХ МЕСЯЦЕВ ДЛЯ ФИЛЬТРА
+function buildMonthFilter() {
+    const filterSelect = document.getElementById("filter-month");
+    if (!filterSelect) return;
+    
+    const oldVal = filterSelect.value;
+    filterSelect.innerHTML = "";
+    let monthsSet = new Set();
+    
+    rawSalaries.forEach(row => {
+        if (!row.date) return;
         let day, month, year;
         let dateStr = row.date.toString().trim();
         
         if (dateStr.includes("-")) {
             let p = dateStr.split("T")[0].split("-");
-            year = p[0]; month = parseInt(p[1], 10) - 1;
+            year = p[0]; 
+            month = parseInt(p[1], 10) - 1;
         } else {
             let p = dateStr.split(".");
             year = p[2] ? p[2].split(" ")[0] : new Date().getFullYear();
@@ -162,120 +163,131 @@
         
         let mNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
         monthsSet.add(mNames[month] + " " + year);
-        });
+    }); // ТЕПЕРЬ ВСЁ ЗАКРЫВАЕТСЯ ПРАВИЛЬНО И БЕЗ ЛИШНИХ СКОБОК
+    
+    let sortedMonths = Array.from(monthsSet).sort((a, b) => {
+        let pA = a.split(" "), pB = b.split(" ");
+        let mNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+        let idxA = mNames.indexOf(pA[0]), idxB = mNames.indexOf(pB[0]);
+        return pB[1] - pA[1] || idxB - idxA;
+    });
+    
+    if (sortedMonths.length === 0) {
+        let now = new Date();
+        let mNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+        sortedMonths.push(mNames[now.getMonth()] + " " + now.getFullYear());
+    }
+    
+    sortedMonths.forEach(m => {
+        let opt = document.createElement("option");
+        opt.value = m;
+        opt.textContent = m;
+        filterSelect.appendChild(opt);
+    });
+    
+    if (oldVal && sortedMonths.includes(oldVal)) {
+        filterSelect.value = oldVal;
+    }
+    
+    filterSelect.onchange = () => {
+        activeEmpFilter = null;
+        renderAdminDashboard();
+    };
+}
+
+
+// ШАГ 3: ОТРИСОВКА ПЛАШЕК И ОБЩИХ СУММ НА ЭКРАНЕ
+function renderAdminDashboard() {
+    const filterSelect = document.getElementById("filter-month");
+    const cardsContainer = document.getElementById("admin-cards-grid");
+    const totalPayoutDisplay = document.getElementById("stat-total-payout");
+    
+    if (!filterSelect || !cardsContainer || !totalPayoutDisplay) return;
+    
+    cardsContainer.innerHTML = "";
+    let selMonth = filterSelect.value;
+    
+    let empTotals = {};
+    let totalMonthPayout = 0;
+    
+    rawSalaries.forEach(row => {
+        if (!row.date || !row.name) return;
         
-        let sortedMonths = Array.from(monthsSet).sort((a, b) => {
-            let pA = a.split(" "), pB = b.split(" ");
-            let mNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
-            let idxA = mNames.indexOf(pA[0]), idxB = mNames.indexOf(pB[0]);
-            return pB[1] - pA[1] || idxB - idxA;
-        });
+        // УНИВЕРСАЛЬНЫЙ РАЗБОР ДАТЫ ДЛЯ СРАВНЕНИЯ С ФИЛЬТРОМ
+        let month, year;
+        let dateStr = row.date.toString().trim();
         
-        if (sortedMonths.length === 0) {
-            let now = new Date();
-            let mNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
-            sortedMonths.push(mNames[now.getMonth()] + " " + now.getFullYear());
+        if (dateStr.includes("-")) {
+            let p = dateStr.split("T")[0].split("-");
+            year = p[0]; 
+            month = parseInt(p[1], 10) - 1;
+        } else {
+            let p = dateStr.split(".");
+            year = p[2] ? p[2].split(" ")[0] : new Date().getFullYear();
+            month = p[1] ? parseInt(p[1], 10) - 1 : 0;
         }
         
-        sortedMonths.forEach(m => {
-            let opt = document.createElement("option");
-            opt.value = m;
-            opt.textContent = m;
-            filterSelect.appendChild(opt);
-        });
+        let mNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+        let rowMonth = mNames[month] + " " + year;
         
-        if (oldVal && sortedMonths.includes(oldVal)) {
-            filterSelect.value = oldVal;
+        if (rowMonth === selMonth) {
+            let totalVal = Number(row.total) || 0;
+            totalMonthPayout += totalVal;
+            
+            if (!empTotals[row.name]) {
+                empTotals[row.name] = { total: 0, shifts: 0 };
+            }
+            empTotals[row.name].total += totalVal;
+            empTotals[row.name].shifts += 1;
         }
+    });
+    
+    totalPayoutDisplay.textContent = totalMonthPayout.toLocaleString() + " ₸";
+    
+    let empNames = Object.keys(empTotals);
+    if (empNames.length === 0) {
+        cardsContainer.innerHTML = "<div style='color:#aaa; grid-column:1/-1; text-align:center; padding:20px;'>Выплат не найдено</div>";
+        document.getElementById("admin-details-section").style.display = "none";
+        return;
+    }
+    
+    empNames.forEach(name => {
+        let card = document.createElement("div");
+        card.style.background = "#1f1f1f";
+        card.style.border = activeEmpFilter === name ? "2px solid #2196f3" : "1px solid #333";
+        card.style.padding = "20px";
+        card.style.borderRadius = "8px";
+        card.style.cursor = "pointer";
         
-        filterSelect.onchange = () => {
-            activeEmpFilter = null;
+        card.innerHTML = "<div style='font-weight:bold; font-size:16px; margin-bottom:5px;'>" + name + "</div><div style='font-size:24px; font-weight:bold; color:#4caf50; margin-bottom:5px;'>" + empTotals[name].total.toLocaleString() + " ₸</div><div style='font-size:12px; color:#aaa;'>Смен: " + empTotals[name].shifts + "</div>";
+        
+        card.onclick = () => {
+            activeEmpFilter = (activeEmpFilter === name) ? null : name;
             renderAdminDashboard();
         };
-    }
+        cardsContainer.appendChild(card);
+    });
+    
+    renderEmployeeDetails(selMonth);
+}
 
-    // ШАГ 3: ОТРИСОВКА ПЛАШЕК И ОБЩИХ СУММ НА ЭКРАНЕ
-    function renderAdminDashboard() {
-        const filterSelect = document.getElementById("filter-month");
-        const cardsContainer = document.getElementById("admin-cards-grid");
-        const totalPayoutDisplay = document.getElementById("stat-total-payout");
-        
-        if (!filterSelect || !cardsContainer || !totalPayoutDisplay) return;
-        
-        cardsContainer.innerHTML = "";
-        let selMonth = filterSelect.value;
-        
-        let empTotals = {};
-        let totalMonthPayout = 0;
-        
-        rawSalaries.forEach(row => {
-            if (!row.date || !row.name) return;
-            let parts = row.date.split(".");
-            if (parts.length === 3) {
-                let mIdx = parseInt(parts[1], 10) - 1;
-                let y = parts[2];
-                let mNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
-                let rowMonth = mNames[mIdx] + " " + y;
-                
-                if (rowMonth === selMonth) {
-                    let totalVal = Number(row.total) || 0;
-                    totalMonthPayout += totalVal;
-                    
-                    if (!empTotals[row.name]) {
-                        empTotals[row.name] = { total: 0, shifts: 0 };
-                    }
-                    empTotals[row.name].total += totalVal;
-                    empTotals[row.name].shifts += 1;
-                }
-            }
-        });
-        
-        totalPayoutDisplay.textContent = totalMonthPayout.toLocaleString() + " ₸";
-        
-        let empNames = Object.keys(empTotals);
-        if (empNames.length === 0) {
-            cardsContainer.innerHTML = "<div style='color:#aaa; grid-column:1/-1; text-align:center; padding:20px;'>Выплат не найдено</div>";
-            document.getElementById("admin-details-section").style.display = "none";
-            return;
-        }
-        
-        empNames.forEach(name => {
-            let card = document.createElement("div");
-            // Простые инлайн-стили для карточек, чтобы обойти фильтр CSS
-            card.style.background = "#1f1f1f";
-            card.style.border = activeEmpFilter === name ? "2px solid #2196f3" : "1px solid #333";
-            card.style.padding = "20px";
-            card.style.borderRadius = "8px";
-            card.style.cursor = "pointer";
-            
-            card.innerHTML = "<div style='font-weight:bold; font-size:16px; margin-bottom:5px;'>" + name + "</div><div style='font-size:24px; font-weight:bold; color:#4caf50; margin-bottom:5px;'>" + empTotals[name].total.toLocaleString() + " ₸</div><div style='font-size:12px; color:#aaa;'>Смен: " + empTotals[name].shifts + "</div>";
-            
-            card.onclick = () => {
-                activeEmpFilter = (activeEmpFilter === name) ? null : name;
-                renderAdminDashboard();
-            };
-            cardsContainer.appendChild(card);
-        });
-        
-        renderEmployeeDetails(selMonth);
+// ШАГ 4: ПОДРОБНАЯ ТАБЛИЦА-РАСШИФРОВКА ПО ДНЯМ ДЛЯ МАСТЕРА
+function renderEmployeeDetails(selMonth) {
+    const detailsSection = document.getElementById("admin-details-section");
+    const detailsTitle = document.getElementById("details-emp-name");
+    const detailsTableBody = document.getElementById("details-table-body");
+    
+    if (!detailsSection || !detailsTitle || !detailsTableBody) return;
+    if (!activeEmpFilter) {
+        detailsSection.style.display = "none";
+        return;
     }
-    // ШАГ 4: ПОДРОБНАЯ ТАБЛИЦА-РАСШИФРОВКА ПО ДНЯМ ДЛЯ МАСТЕРА
-    function renderEmployeeDetails(selMonth) {
-        const detailsSection = document.getElementById("admin-details-section");
-        const detailsTitle = document.getElementById("details-emp-name");
-        const detailsTableBody = document.getElementById("details-table-body");
-        
-        if (!detailsSection || !detailsTitle || !detailsTableBody) return;
-        if (!activeEmpFilter) {
-            detailsSection.style.display = "none";
-            return;
-        }
-        
-        detailsTitle.textContent = activeEmpFilter;
-        detailsTableBody.innerHTML = "";
-        
-        let filteredRows = rawSalaries.filter(row => {
-            if (!row.date || row.name !== activeEmpFilter) return false;
+    
+    detailsTitle.textContent = activeEmpFilter;
+    detailsTableBody.innerHTML = "";
+    
+    let filteredRows = rawSalaries.filter(row => {
+        if (!row.date || row.name !== activeEmpFilter) return false;
         let day, month, year;
         let dateStr = row.date.toString().trim();
         
@@ -290,35 +302,37 @@
         
         let mNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
         return (mNames[month] + " " + year) === selMonth;
-            }
-            return false;
-        });
-        
-        filteredRows.sort((a, b) => {
-            return new Date(a.date) - new Date(b.date);
-
-        });
-        
-        filteredRows.forEach(row => {
-            let tr = document.createElement("tr");
-            tr.innerHTML = "<td style='padding:10px; border-bottom:1px solid #333;'>" + row.date.split(" ")[0] + "</td><td style='padding:10px; border-bottom:1px solid #333;'>" + (row.point || "—") + "</td><td style='padding:10px; border-bottom:1px solid #333;'><span style='background:#2d2d2d; padding:3px 8px; border-radius:4px; font-size:12px;'>" + row.mode + "</span></td><td style='padding:10px; border-bottom:1px solid #333;'>" + Number(row.base).toLocaleString() + " ₸</td><td style='padding:10px; border-bottom:1px solid #333;'>" + Number(row.bonus).toLocaleString() + " ₸</td><td style='padding:10px; border-bottom:1px solid #333; color:#4caf50; font-weight:bold;'>" + Number(row.total).toLocaleString() + " ₸</td><td style='padding:10px; border-bottom:1px solid #333; color:#aaa;'>" + Number(row.drawerLeft).toLocaleString() + " ₸</td>";
-            detailsTableBody.appendChild(tr);
-        });
-        
-        detailsSection.style.display = "block";
-    }
-
-    // ИНИЦИАЛИЗАЦИЯ СТРАНИЦЫ ПРИ ЗАГРУЗКЕ
-    document.addEventListener("DOMContentLoaded", () => {
-        const btnRefresh = document.getElementById("admin-btn-refresh");
-        if (btnRefresh) {
-            btnRefresh.onclick = () => {
-                activeEmpFilter = null;
-                loadSalariesData();
-            };
-        }
-        loadSalariesData();
+    }); // Лишняя скобка удалена, теперь закрывается корректно
+    
+    filteredRows.sort((a, b) => {
+        return new Date(a.date) - new Date(b.date);
     });
+    
+    filteredRows.forEach(row => {
+        let tr = document.createElement("tr");
+        
+        // Красиво форматируем дату для вывода в таблицу (убираем Т00:00:00 из ISO)
+        let displayDate = row.date.toString().split("T")[0];
+        
+        tr.innerHTML = "<td style='padding:10px; border-bottom:1px solid #333;'>" + displayDate + "</td><td style='padding:10px; border-bottom:1px solid #333;'>" + (row.point || "—") + "</td><td style='padding:10px; border-bottom:1px solid #333;'><span style='background:#2d2d2d; padding:3px 8px; border-radius:4px; font-size:12px;'> " + row.mode + "</span></td><td style='padding:10px; border-bottom:1px solid #333;'>" + Number(row.base).toLocaleString() + " ₸</td><td style='padding:10px; border-bottom:1px solid #333;'>" + Number(row.bonus).toLocaleString() + " ₸</td><td style='padding:10px; border-bottom:1px solid #333; color:#4caf50; font-weight:bold;'>" + Number(row.total).toLocaleString() + " ₸</td><td style='padding:10px; border-bottom:1px solid #333; color:#aaa;'>" + Number(row.drawerLeft).toLocaleString() + " ₸</td>";
+        detailsTableBody.appendChild(tr);
+    });
+    
+    detailsSection.style.display = "block";
+}
+
+// ИНИЦИАЛИЗАЦИЯ СТРАНИЦЫ ПРИ ЗАГРУЗКЕ
+document.addEventListener("DOMContentLoaded", () => {
+    const btnRefresh = document.getElementById("admin-btn-refresh");
+    if (btnRefresh) {
+        btnRefresh.onclick = () => {
+            activeEmpFilter = null;
+            loadSalariesData();
+        };
+    }
+    loadSalariesData();
+});
 </script>
 </body>
 </html>
+
