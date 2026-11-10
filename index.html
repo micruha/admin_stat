@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кабинет Руководителя — Зарплаты</title>
+    <!-- Базовые стили темной темы, сетки и интерфейса администратора -->
+    <style>
+        :root {
+            --bg-main: #141414;
+            --bg-card: #1f1f1f;
+            --bg-input: #2d2d2d;
+            --text-main: #ffffff;
+            --text-muted: #aaaaaa;
+            --accent: #2196f3;
+            --accent-hover: #1976d2;
+            --success: #4caf50;
+            --danger: #f44336;
+            --border: #333333;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            padding: 20px;
+            line-height: 1.5;
+        }
+        /* Дополнительные стили элементов интерфейса и таблиц */
+    </style>
+</head>
+
+<body>
+    <div style="max-width:1200px; margin:0 auto;">
+        
+        <!-- НАЧАЛО ШАПКИ С ФИЛЬТРАМИ -->
+        <div style="display:flex; justify-content:space-between; align-items:center; background:#1f1f1f; padding:20px; border-radius:8px; border:1px solid #333; margin-bottom:20px; flex-wrap:wrap; gap:15px;">
+            <div>
+                <h1 style="font-size:20px; font-weight:bold; margin-bottom:5px;">Кабинет Руководителя</h1>
+                <div style="display:flex; align-items:center; gap:8px; font-size:13px; color:#aaa;">
+                    <div id="admin-status-dot" style="width:8px; height:8px; background:#f44336; border-radius:50%;"></div>
+                    <span id="admin-status-text">Проверка связи...</span>
+                </div>
+            </div>
+            
+            <div style="display:flex; align-items:center; gap:15px;">
+                <select id="filter-month" style="background:#2d2d2d; color:#fff; border:1px solid #333; padding:10px 15px; border-radius:6px; font-size:14px; outline:none; cursor:pointer;">
+                    <option>Загрузка месяцев...</option>
+                </select>
+                <button id="admin-btn-refresh" style="background:#2196f3; color:#fff; border:none; padding:10px 20px; border-radius:6px; font-size:14px; font-weight:bold; cursor:pointer; transition:0.2s;">
+                    🔄 Обновить данные
+                </button>
+            </div>
+        </div>
+        <!-- КОНЕЦ ШАПКИ -->
+
+        <!-- БЛОК С ОБЩЕЙ СУММОЙ ЗА МЕСЯЦ -->
+        <div style="background:#1f1f1f; padding:20px; border-radius:8px; border:1px solid #333; margin-bottom:20px;">
+            <div style="font-size:14px; color:#aaa; margin-bottom:5px;">Всего выплачено за месяц:</div>
+            <div id="stat-total-payout" style="font-size:32px; font-weight:bold; color:#4caf50;">0 ₸</div>
+        </div>
+
+        <!-- СЕТКА ДЛЯ ПЛАШЕК СОТРУДНИКОВ -->
+        <div id="admin-cards-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr)); gap:15px; margin-bottom:25px;">
+            <!-- Сюда JavaScript сам добавит интерактивные карточки людей -->
+        </div>
+
+        <!-- БЛОК ДЕТАЛЬНОЙ РАСПЕЧАТКИ ПО ДНЯМ -->
+        <div id="admin-details-section" style="display:none; background:#1f1f1f; padding:20px; border-radius:8px; border:1px solid #333; margin-bottom:20px;">
+            <h2 style="font-size:18px; font-weight:bold; margin-bottom:15px; border-bottom:1px solid #333; padding-bottom:10px;">
+                Детальный отчёт по дням: <span id="details-emp-name" style="color:#2196f3;"></span>
+            </h2>
+            <div style="overflow-x:auto;">
+                <table style="width:100%; border-collapse:collapse; text-align:left; font-size:14px;">
+                    <thead>
+                        <tr style="border-bottom:2px solid #333; color:#aaa;">
+                            <th style="padding:10px;">Дата</th>
+                            <th style="padding:10px;">Точка</th>
+                            <th style="padding:10px;">Режим смены</th>
+                            <th style="padding:10px;">Ставка</th>
+                            <th style="padding:10px;">Бонус (%)</th>
+                            <th style="padding:10px;">Выдано</th>
+                            <th style="padding:10px;">Касса остаток</th>
+                        </tr>
+                    </thead>
+                    <tbody id="details-table-body">
+                        <!-- Сюда JavaScript будет дописывать строчки отчёта -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div> <!-- Конец главного контейнера -->
+
+    <script>
+    // ССЫЛКА НА ВАШ GOOGLE APPS SCRIPT (ОСТАВЛЯЕМ ТУ, ЧТО БЫЛА В ПРОШЛОЙ СБОРКЕ)
+    const CONFIG_CLOUD_URL = "https://script.google.com/macros/s/AKfycbyktok79zqXQXI3_3fNIoHPNtCG5u3gPaMGZGVWYOQHivdr5lMr3YZOvRa2_cxyL7SH/exec";
+
+    let rawSalaries = []; // Массив для хранения всех выгруженных зарплат
+    let activeEmpFilter = null; // Выбранный сотрудник для раскрытия таблицы
+
+    // УПРАВЛЕНИЕ ЛОКАЛЬНЫМ ИНДИКАТОРОМ СВЯЗИ В ШАПКЕ
+    function setAdminStatus(isOnline, text = "") {
+        const dot = document.getElementById("admin-status-dot");
+        const lbl = document.getElementById("admin-status-text");
+        if (!dot || !lbl) return;
+        if (isOnline) {
+            dot.style.background = "#4caf50"; // Зелёный
+            lbl.textContent = text || "Облако онлайн";
+        } else {
+            dot.style.background = "#f44336"; // Красный
+            lbl.textContent = text || "Ошибка подключения";
+        }
+    }
+
+    // ЗАГРУЗКА АРХИВА ЗАРПЛАТ ИЗ GOOGLE ТАБЛИЦЫ
+    async function loadSalariesData() {
+        setAdminStatus(true, "Синхронизация данных...");
+        try {
+            let res = await fetch(CONFIG_CLOUD_URL, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain" },
+                body: JSON.stringify({ action: "getAdminSalaries" })
+            });
+            if (!res.ok) throw new Error("Ошибка ответа сервера");
+            
+            rawSalaries = await res.json();
+            setAdminStatus(true, "Облако онлайн. Загружено строк: " + rawSalaries.length);
+            
+            buildMonthFilter();
+            renderAdminDashboard();
+        } catch (e) {
+            setAdminStatus(false, "Не удалось загрузить данные о зарплатах");
+            console.error(e);
+        }
+    }
+
+
+
+    // ШАГ 2: СБОРКА УНИКАЛЬНЫХ МЕСЯЦЕВ ДЛЯ ФИЛЬТРА
+    function buildMonthFilter() {
+        const filterSelect = document.getElementById("filter-month");
+        if (!filterSelect) return;
+        
+        const oldVal = filterSelect.value;
+        filterSelect.innerHTML = "";
+        let monthsSet = new Set();
+        
+        rawSalaries.forEach(row => {
+            if (!row.date) return;
+            let parts = row.date.split(".");
+            if (parts.length === 3) {
+                let mIdx = parseInt(parts[1], 10) - 1;
+                let y = parts[2];
+                let mNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+                monthsSet.add(mNames[mIdx] + " " + y);
+            }
+        });
+        
+        let sortedMonths = Array.from(monthsSet).sort((a, b) => {
+            let pA = a.split(" "), pB = b.split(" ");
+            let mNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+            let idxA = mNames.indexOf(pA[0]), idxB = mNames.indexOf(pB[0]);
+            return pB[1] - pA[1] || idxB - idxA;
+        });
+        
+        if (sortedMonths.length === 0) {
+            let now = new Date();
+            let mNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+            sortedMonths.push(mNames[now.getMonth()] + " " + now.getFullYear());
+        }
+        
+        sortedMonths.forEach(m => {
+            let opt = document.createElement("option");
+            opt.value = m;
+            opt.textContent = m;
+            filterSelect.appendChild(opt);
+        });
+        
+        if (oldVal && sortedMonths.includes(oldVal)) {
+            filterSelect.value = oldVal;
+        }
+        
+        filterSelect.onchange = () => {
+            activeEmpFilter = null;
+            renderAdminDashboard();
+        };
+    }
+
+    // ШАГ 3: ОТРИСОВКА ПЛАШЕК И ОБЩИХ СУММ НА ЭКРАНЕ
+    function renderAdminDashboard() {
+        const filterSelect = document.getElementById("filter-month");
+        const cardsContainer = document.getElementById("admin-cards-grid");
+        const totalPayoutDisplay = document.getElementById("stat-total-payout");
+        
+        if (!filterSelect || !cardsContainer || !totalPayoutDisplay) return;
+        
+        cardsContainer.innerHTML = "";
+        let selMonth = filterSelect.value;
+        
+        let empTotals = {};
+        let totalMonthPayout = 0;
+        
+        rawSalaries.forEach(row => {
+            if (!row.date || !row.name) return;
+            let parts = row.date.split(".");
+            if (parts.length === 3) {
+                let mIdx = parseInt(parts[1], 10) - 1;
+                let y = parts[2];
+                let mNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+                let rowMonth = mNames[mIdx] + " " + y;
+                
+                if (rowMonth === selMonth) {
+                    let totalVal = Number(row.total) || 0;
+                    totalMonthPayout += totalVal;
+                    
+                    if (!empTotals[row.name]) {
+                        empTotals[row.name] = { total: 0, shifts: 0 };
+                    }
+                    empTotals[row.name].total += totalVal;
+                    empTotals[row.name].shifts += 1;
+                }
+            }
+        });
+        
+        totalPayoutDisplay.textContent = totalMonthPayout.toLocaleString() + " ₸";
+        
+        let empNames = Object.keys(empTotals);
+        if (empNames.length === 0) {
+            cardsContainer.innerHTML = "<div style='color:#aaa; grid-column:1/-1; text-align:center; padding:20px;'>Выплат не найдено</div>";
+            document.getElementById("admin-details-section").style.display = "none";
+            return;
+        }
+        
+        empNames.forEach(name => {
+            let card = document.createElement("div");
+            // Простые инлайн-стили для карточек, чтобы обойти фильтр CSS
+            card.style.background = "#1f1f1f";
+            card.style.border = activeEmpFilter === name ? "2px solid #2196f3" : "1px solid #333";
+            card.style.padding = "20px";
+            card.style.borderRadius = "8px";
+            card.style.cursor = "pointer";
+            
+            card.innerHTML = "<div style='font-weight:bold; font-size:16px; margin-bottom:5px;'>" + name + "</div><div style='font-size:24px; font-weight:bold; color:#4caf50; margin-bottom:5px;'>" + empTotals[name].total.toLocaleString() + " ₸</div><div style='font-size:12px; color:#aaa;'>Смен: " + empTotals[name].shifts + "</div>";
+            
+            card.onclick = () => {
+                activeEmpFilter = (activeEmpFilter === name) ? null : name;
+                renderAdminDashboard();
+            };
+            cardsContainer.appendChild(card);
+        });
+        
+        renderEmployeeDetails(selMonth);
+    }
+    // ШАГ 4: ПОДРОБНАЯ ТАБЛИЦА-РАСШИФРОВКА ПО ДНЯМ ДЛЯ МАСТЕРА
+    function renderEmployeeDetails(selMonth) {
+        const detailsSection = document.getElementById("admin-details-section");
+        const detailsTitle = document.getElementById("details-emp-name");
+        const detailsTableBody = document.getElementById("details-table-body");
+        
+        if (!detailsSection || !detailsTitle || !detailsTableBody) return;
+        if (!activeEmpFilter) {
+            detailsSection.style.display = "none";
+            return;
+        }
+        
+        detailsTitle.textContent = activeEmpFilter;
+        detailsTableBody.innerHTML = "";
+        
+        let filteredRows = rawSalaries.filter(row => {
+            if (!row.date || row.name !== activeEmpFilter) return false;
+            let parts = row.date.split(".");
+            if (parts.length === 3) {
+                let mIdx = parseInt(parts[1], 10) - 1;
+                // Срезаем лишние пробелы или время, если они прилипли к году
+                let y = parts[2].trim().split(" ")[0]; 
+                let mNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+                return (mNames[mIdx] + " " + y) === selMonth;
+            }
+            return false;
+        });
+        
+        filteredRows.sort((a, b) => {
+            let pA = a.date.split("."), pB = b.date.split(".");
+            return new Date(pA[2], pA[1]-1, pA[0]) - new Date(pB[2], pB[1]-1, pB[0]);
+        });
+        
+        filteredRows.forEach(row => {
+            let tr = document.createElement("tr");
+            tr.innerHTML = "<td style='padding:10px; border-bottom:1px solid #333;'>" + row.date.split(" ")[0] + "</td><td style='padding:10px; border-bottom:1px solid #333;'>" + (row.point || "—") + "</td><td style='padding:10px; border-bottom:1px solid #333;'><span style='background:#2d2d2d; padding:3px 8px; border-radius:4px; font-size:12px;'>" + row.mode + "</span></td><td style='padding:10px; border-bottom:1px solid #333;'>" + Number(row.base).toLocaleString() + " ₸</td><td style='padding:10px; border-bottom:1px solid #333;'>" + Number(row.bonus).toLocaleString() + " ₸</td><td style='padding:10px; border-bottom:1px solid #333; color:#4caf50; font-weight:bold;'>" + Number(row.total).toLocaleString() + " ₸</td><td style='padding:10px; border-bottom:1px solid #333; color:#aaa;'>" + Number(row.drawerLeft).toLocaleString() + " ₸</td>";
+            detailsTableBody.appendChild(tr);
+        });
+        
+        detailsSection.style.display = "block";
+    }
+
+    // ИНИЦИАЛИЗАЦИЯ СТРАНИЦЫ ПРИ ЗАГРУЗКЕ
+    document.addEventListener("DOMContentLoaded", () => {
+        const btnRefresh = document.getElementById("admin-btn-refresh");
+        if (btnRefresh) {
+            btnRefresh.onclick = () => {
+                activeEmpFilter = null;
+                loadSalariesData();
+            };
+        }
+        loadSalariesData();
+    });
+</script>
+</body>
+</html>
